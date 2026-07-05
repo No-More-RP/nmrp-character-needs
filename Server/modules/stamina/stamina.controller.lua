@@ -34,15 +34,4 @@ return function(ctx)
     -- Authority loop: advances ONLY the draining/regenerating players. A server full of idle
     -- players does no per-player work here.
     Timer.SetInterval(function() stamina.tick_active(); end, stamina.tick_ms);
-
-    -- Dev: print your stamina.
-    command({
-        name = "stamina",
-        description = "Print your current stamina (dev)",
-        callback = function(cmd)
-            local player <const> = cmd.player;
-            if (not player) then return; end
-            Chat.SendMessage(player, ("Stamina: %d"):format(math.floor(stamina.get(player))));
-        end,
-    });
 end

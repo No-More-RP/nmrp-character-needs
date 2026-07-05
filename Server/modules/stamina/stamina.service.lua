@@ -17,10 +17,13 @@
 ---      sprint stop, exhaustion). The client interpolates the bar from that segment
 ---      (value + rate * elapsed, held for `delay`, clamped at [0, max]), so ~2 packets
 ---      per sprint replace ~10/s and the bar stays smooth at 60fps.
----   The tick still advances the authoritative value (for exhaustion / recovery and the
----   debug read), but it replicates nothing between transitions.
+---   The tick still advances the authoritative value (for exhaustion / recovery), but it
+---   replicates nothing between transitions.
 ---
 --- Transient state (no Norm table): cleared on UnPossess and via player.on_releasing.
+---
+--- Tuning (drain/regen rates, thresholds, tick period) is NOT hardcoded here: it lives in
+--- Shared/config.lua, the single file a server owner edits to balance the system.
 ---
 ---@class StaminaState
 ---@field char Character         the possessed Character (cached; handed to us on Possess)
@@ -29,15 +32,11 @@
 ---@field exhausted boolean      sprint cut at 0, waiting for the recovery threshold
 ---@field cooldown number        seconds left before regen resumes after a sprint
 ---@field seg_draining boolean   draining state carried by the last segment sent (dedup)
----
----@class StaminaService
----@field on_spawn fun(player: Player, character: Character): void                       init on possession
----@field on_gait fun(player: Player, character: Character, new_state: GaitMode): void    react to a gait change
----@field on_release fun(player: Player): void                                           drop a player's state
----@field tick_active fun(): void                                                        advance every active player
----@field get fun(player: Player): number                                               current stamina (max if unknown)
----@field push fun(player: Player): void                                                 (re)push the current segment (reliable)
----@field tick_ms integer                                                                Timer period (ms) for the controller
+
+-- Server-owner tuning, edited in Shared/config.lua. Required at file top-level (main
+-- thread): nanos `require` does not work inside a coroutine, and a Server file falls back
+-- to Shared/, so 'config.lua' resolves to Shared/config.lua.
+local CONFIG <const> = require 'config.lua'.stamina; ---@type StaminaConfig
 
 --- Build the stamina service.
 ---
@@ -49,14 +48,6 @@
 return function(ctx)
     local players <const> = ctx.services.player; ---@type PlayerService
 
-    local CONFIG <const> = {
-        max           = 100,
-        drain_per_s   = 25,   -- loss while sprinting
-        regen_per_s   = 15,   -- recovery at rest
-        regen_delay_s = 0.8,  -- delay before regen after a sprint
-        recover_at    = 20,   -- sprint re-allow threshold after exhaustion
-        tick_ms       = 100,
-    };
     local DT <const> = CONFIG.tick_ms / 1000;
 
     -- Every tracked player's state (present between Possess and release).
@@ -127,7 +118,8 @@ return function(ctx)
         end
     end
 
-    local service <const> = {}; ---@type StaminaService
+    ---@class StaminaService
+    local service <const> = {};
     service.tick_ms = CONFIG.tick_ms;
 
     --- Initialize a player on possession: cache the Character, reset to full, allow

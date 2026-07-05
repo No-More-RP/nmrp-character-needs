@@ -63,8 +63,32 @@ same descriptor the core uses (`{ name, depends?, models?, service?, controller?
 The stamina gauge is a runtime **HUD gauge**: the core HUD keeps only health permanent and lets
 features add/remove bars on the fly, so this addon owns its bar and removes it on unload.
 
-Tuning (drain/regen rates, thresholds, tick period) lives in the `CONFIG` table of
-[`Server/modules/stamina/stamina.service.lua`](Server/modules/stamina/stamina.service.lua).
+## Configuration
+
+All tuning lives in one file, [`Shared/config.lua`](Shared/config.lua). To balance the
+survival systems you edit that file and restart the server, no need to be a developer or to
+touch any module code: change the numbers, keep the keys. Each feature has its own sub-table
+and every value is commented.
+
+```lua
+return {
+    stamina = {
+        max           = 100,  -- full stamina value
+        drain_per_s   = 25,   -- units lost per second while sprinting
+        regen_per_s   = 15,   -- units recovered per second at rest
+        regen_delay_s = 0.8,  -- delay (s) before regen resumes after a sprint
+        recover_at    = 20,   -- value at which sprinting is re-allowed after exhaustion
+        tick_ms       = 100,  -- authority update period (ms)
+    },
+};
+```
+
+> Why a file and not the New Game menu? nanos' `[custom_settings]` (the menu form) is only
+> read for the **game-mode** package; a **script** package like this one cannot expose them.
+> A shared config file is the portable way to keep the knobs in one obvious place.
+
+Each module reads its own section at boot (`require 'config.lua'.stamina`), so a new feature
+just adds a sub-table here.
 
 ## Add a module
 

@@ -8,4 +8,9 @@ return {
     name       = "stamina",
     depends    = { "hud" },
     controller = controller,
+    -- Drop the gauge when this addon unregisters (Package "Unload" -> NMRP.unregister) so it
+    -- does not linger on the core HUD. The gauge lives in nmrp, not this package, so the
+    -- engine's auto-cleanup does not reach it. The loader pcall-guards this call, so on a full
+    -- gamemode reload (nmrp already gone) it is a harmless no-op.
+    destroy    = function(ctx) ctx.services.hud.unregister_gauge("stamina"); end,
 };

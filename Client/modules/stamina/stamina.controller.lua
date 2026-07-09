@@ -18,9 +18,5 @@ return function(ctx)
     Events.SubscribeRemote("stamina:update", function(value, rate, delay)
         hud.set_gauge_segment("stamina", value, rate, delay);
     end);
-
-    -- Drop the gauge if THIS package unloads on its own, so it does not linger on the HUD.
-    -- Guarded: on a full gamemode reload nmrp unloads first, so reaching into its (now dead)
-    -- HUD would error; pcall makes that a harmless no-op (nmrp took its registry with it).
-    Package.Subscribe("Unload", function() pcall(hud.unregister_gauge, "stamina"); end);
+    -- The gauge is dropped by the module's `destroy` hook on unregister (see stamina.module).
 end
